@@ -233,13 +233,14 @@ footer.credits a{color:inherit}
             </div>
             <div class="voicegrid" id="natVoices" role="radiogroup" aria-label="Natural voice"></div>
             <p class="hint" id="natSpeed"></p>
+            <button id="gpuSwitch" class="btn small" type="button" hidden>Use GPU mode for faster speech (330&nbsp;MB, one time)</button>
           </div>
 
           <div id="devBox" class="engbox" hidden>
             <div class="field">
               <label for="voice">Device voice</label>
               <select id="voice"></select>
-              <p class="hint" id="voiceHint">Built into your phone or computer. Some voices in Chrome and Edge need an internet connection.</p>
+              <p class="hint" id="voiceHint">Built into your phone or computer. Fastest option, with no waiting. On iPhone, iPad and Mac, free Premium voices (such as Ava or Zoe) sound very natural: add them in Settings → Accessibility → Spoken Content → Voices. Some voices in Chrome and Edge need an internet connection.</p>
             </div>
             <label class="row hint" for="allLangs"><input type="checkbox" id="allLangs"> Show voices in every language</label>
             <div class="field" id="pitchField"><label for="pitch">Pitch <output id="pitchOut"></output></label><input type="range" id="pitch" min="0.7" max="1.4" step="0.05"></div>

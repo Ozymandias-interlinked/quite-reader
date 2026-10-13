@@ -123,11 +123,11 @@ function splitSentences(text,useSeg){
   for(let p of parts){
     p=p.trim();
     if(!p)continue;
-    while(p.length>280){
+    while(p.length>170){
       let cut=-1;
       const re=/[,;:—–]\s/g;let m;
-      while((m=re.exec(p))&&m.index<260)cut=m.index+1;
-      if(cut<80){cut=p.lastIndexOf(' ',260);if(cut<80)cut=260;}
+      while((m=re.exec(p))&&m.index<150)cut=m.index+1;
+      if(cut<50){cut=p.lastIndexOf(' ',150);if(cut<50)cut=150;}
       res.push(p.slice(0,cut).trim());
       p=p.slice(cut).trim();
     }
@@ -730,14 +730,29 @@ function updateBuffer(){
 function renderSpeed(){
   if(!N.rtf){$('natSpeed').textContent='';return;}
   const x=1/N.rtf;
-  $('natSpeed').textContent=x>=S.rate*1.1
+  const smooth=x>=S.rate*1.1;
+  $('natSpeed').textContent=smooth
     ?'This device makes speech '+x.toFixed(1)+'× faster than it plays, so listening is smooth.'
-    :'This device makes speech at '+x.toFixed(1)+'× playing speed, so expect short pauses. Pause for a minute to let it get ahead, or switch to a device voice.';
+    :'This device makes speech at '+x.toFixed(1)+'× playing speed, so expect short pauses.'+(gpuOffer()?' GPU mode below is usually several times faster.':' Pause for a minute to let it get ahead, or use a device voice.');
+  $('gpuSwitch').hidden=!gpuOffer();
+}
+const gpuOffer=()=>('gpu' in navigator)&&N.state==='ready'&&N.mode!=='webgpu';
+function switchToGpu(){
+  if(!navigator.onLine){$('natMsg').textContent='Connect to the internet once to download GPU mode.';return;}
+  const was=S.playing;if(was)pause();
+  if(N.worker)N.worker.terminate();
+  N.worker=null;N.state='none';N.inflight=null;N.waiting=false;N.rtf=0;
+  for(const k of [...N.cache.keys()])natDrop(k);
+  S.natGpu=true;saveSettings();
+  $('gpuSwitch').hidden=true;$('natSpeed').textContent='';
+  natStart('webgpu');
+  $('natGet').hidden=false;$('natMsg').textContent='Setting up GPU mode. This is a one-time download of about 330 MB.';
 }
 function renderNat(){
   const ready=N.state==='ready',loading=N.state==='loading';
   $('natDownload').hidden=ready;
   $('natGet').hidden=ready;
+  $('gpuSwitch').hidden=!gpuOffer()||!N.rtf||1/N.rtf>=S.rate*1.1;
   $('natDownload').disabled=loading;
   $('natDownload').textContent=loading?'Downloading…':(N.state==='error'?'Try again':'Download natural voices');
   $('gpuRow').hidden=!('gpu' in navigator)||loading||ready;
@@ -766,7 +781,7 @@ function setEngine(eng){
 
 /* ---------- Shared playback ---------- */
 function syncPlayUI(){
-  $('icPlay').hidden=S.playing;$('icPause').hidden=!S.playing;
+  $('icPlay').toggleAttribute('hidden',S.playing);$('icPause').toggleAttribute('hidden',!S.playing);
   $('play').setAttribute('aria-label',S.playing?'Pause':'Play');
   if(!S.playing)$('play').classList.remove('wait');
   if('mediaSession' in navigator)try{navigator.mediaSession.playbackState=S.playing?'playing':'paused';}catch(e){}
@@ -981,6 +996,7 @@ function init(){
     N.state='none';natStart(S.natGpu?'webgpu':'wasm');
   });
   buildNatVoices();
+  $('gpuSwitch').addEventListener('click',switchToGpu);
   const bind=(id,key)=>$(id).addEventListener('input',e=>{S[key]=+e.target.value;applyRateUI();renderMeta();updateProgress();voiceChanged();});
   bind('rate','rate');bind('pitch','pitch');bind('vol','vol');
   document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{
