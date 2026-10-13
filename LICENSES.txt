@@ -1,0 +1,17 @@
+Quiet Reader uses the following open-source software and models.
+
+Kokoro-82M voice model and voices (hexgrad) ........ Apache License 2.0
+  https://huggingface.co/hexgrad/Kokoro-82M
+  ONNX export: https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX
+kokoro-js .......................................... Apache License 2.0
+Transformers.js (Hugging Face) ...................... Apache License 2.0
+ONNX Runtime Web (Microsoft) ........................ MIT License
+phonemizer (espeak-ng compiled to WebAssembly) ...... GPL-3.0-or-later
+  https://github.com/espeak-ng/espeak-ng
+pdf.js (Mozilla) .................................... Apache License 2.0
+Mammoth ............................................. BSD 2-Clause License
+JSZip ............................................... MIT License (dual MIT / GPL-3.0)
+Literata typeface (TypeTogether) .................... SIL Open Font License 1.1
+Albert Sans typeface ................................ SIL Open Font License 1.1
+
+Full license texts are available from each project's repository.

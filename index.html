@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Quiet Reader</title>
+<meta name="description" content="Read documents and books aloud in a natural voice, offline.">
+<meta name="theme-color" content="#8C3F73">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Quiet Reader">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+/* Layout: reading pane on the left, listening controls on the right. On phones the controls fold above the text and the player docks to the bottom edge. */
+:root{
+  --bg:#F1F1F6; --surface:#FBFBFD; --surface-2:#E8E7F1; --ink:#1F1D2B; --ink-2:#5A576E;
+  --line:#D6D4E3; --accent:#8C3F73; --on-accent:#FFFFFF; --hl:#F4DAEA; --skip:#77748C; --good:#2F7D5B; --warn:#B7791F;
+  --display:"Literata",Georgia,"Times New Roman",serif;
+  --ui:"Albert Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14121B; --surface:#1C1A26; --surface-2:#262335; --ink:#ECEAF5; --ink-2:#A5A2BA;
+    --line:#332F45; --accent:#E79CC6; --on-accent:#1B1020; --hl:#3E2438; --skip:#8F8BA6; --good:#6CC59B; --warn:#E3B05B;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14121B; --surface:#1C1A26; --surface-2:#262335; --ink:#ECEAF5; --ink-2:#A5A2BA;
+  --line:#332F45; --accent:#E79CC6; --on-accent:#1B1020; --hl:#3E2438; --skip:#8F8BA6; --good:#6CC59B; --warn:#E3B05B;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--ui);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 170px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px}
+.mark{font-family:var(--display);font-style:italic;font-weight:600;font-size:1.6rem;letter-spacing:-.01em;margin:0}
+.privacy{color:var(--ink-2);font-size:.85rem;margin:0}
+
+.drop{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 16px;padding:14px 16px;border:1.5px dashed var(--line);border-radius:10px;background:var(--surface)}
+.drop.over{border-color:var(--accent);background:var(--hl)}
+.drop-copy{display:flex;flex-direction:column;min-width:0}
+.drop-copy span{color:var(--ink-2);font-size:.85rem}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 16px;cursor:pointer;min-height:40px}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:transparent;font-weight:600}
+.btn.small{padding:4px 12px;min-height:32px;font-size:.85rem}
+.btn:disabled{opacity:.45;cursor:default}
+#status{margin:0;min-height:1.4em;color:var(--ink-2);font-size:.9rem}
+#status.err{color:var(--accent);font-weight:600}
+
+.docbar{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:8px 16px}
+.docbar h1{font-family:var(--display);font-weight:600;font-size:1.35rem;line-height:1.25;margin:0;overflow-wrap:anywhere;text-wrap:balance}
+.docbar p{margin:2px 0 0;color:var(--ink-2);font-size:.85rem}
+.tag{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--accent);color:var(--accent);padding:2px 8px;border-radius:999px;white-space:nowrap}
+.resume{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 14px;background:var(--hl);border-radius:10px}
+.resume p{margin:0;flex:1 1 220px}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+.panel{order:-1;background:var(--surface);border:1px solid var(--line);border-radius:10px;min-width:0}
+.panel>summary{cursor:pointer;padding:12px 16px;font-weight:600;list-style:none}
+.panel>summary::-webkit-details-marker{display:none}
+.panel-in{padding:0 16px 16px;display:flex;flex-direction:column;gap:20px}
+.panel h2{font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin:0 0 8px;font-weight:600}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.field label,.field .lbl{display:flex;justify-content:space-between;font-size:.85rem}
+.field output{color:var(--ink-2);font-variant-numeric:tabular-nums}
+select{width:100%;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);min-height:40px}
+input[type=range]{width:100%;accent-color:var(--accent);min-height:28px}
+.hint{color:var(--ink-2);font-size:.8rem;margin:4px 0 0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chk{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:2px 10px;align-items:start;padding:6px 0;cursor:pointer}
+.chk input{margin-top:4px;accent-color:var(--accent);width:16px;height:16px}
+.chk b{font-weight:500}
+.chk small{display:block;color:var(--ink-2);font-size:.78rem;line-height:1.35}
+.chk .n{font-variant-numeric:tabular-nums;color:var(--ink-2);font-size:.85rem;min-width:2ch;text-align:right}
+.toc{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:6px}
+.toc button{display:block;width:100%;text-align:left;border:0;background:none;padding:7px 10px;cursor:pointer;font-size:.88rem;overflow-wrap:anywhere}
+.toc li+li{border-top:1px solid var(--line)}
+.toc button[aria-current=true]{background:var(--hl);font-weight:600}
+.toc .empty{padding:8px 10px;color:var(--ink-2);font-size:.85rem}
+
+main{min-width:0}
+.secnav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.secnav span{font-size:.82rem;color:var(--ink-2);text-align:center;min-width:0;overflow-wrap:anywhere}
+.reader{font-family:var(--display);font-size:clamp(1.05rem,1rem + .3vw,1.2rem);line-height:1.8;max-width:68ch;margin:0 auto;padding:6px 0 24px}
+.reader p{margin:0 0 1.1em}
+.reader .hd{font-weight:600;line-height:1.3;margin:1.6em 0 .7em;text-wrap:balance}
+.reader .hd.h1{font-size:1.5em;font-style:italic}
+.reader .hd.h2{font-size:1.2em}
+.reader .hd.h3{font-size:1.05em}
+.s{border-radius:3px;cursor:pointer;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+@media (hover:hover){.s:hover{background:var(--surface-2)}}
+.s.cur{background:var(--hl);box-shadow:0 0 0 3px var(--hl)}
+.skipped{font-family:var(--ui);font-size:.8rem;line-height:1.5;color:var(--skip);text-decoration:line-through;margin:0 0 .7em}
+.why{display:inline-block;text-decoration:none;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);padding:0 .45em;border-radius:3px;margin-right:.5em}
+.endnote{text-align:center;color:var(--ink-2);font-family:var(--ui);font-size:.9rem;padding:12px 0}
+
+.player{position:fixed;inset-inline:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));z-index:10}
+.pl-in{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 16px;align-items:center}
+.pl-ctl{grid-column:1;grid-row:1;display:flex;align-items:center;gap:8px}
+.pl-rate{grid-column:3;grid-row:1}
+.pl-seek{grid-column:1/-1;grid-row:2;min-width:0}
+.pl-seek input{display:block}
+#plLabel{margin:0;font-size:.8rem;color:var(--ink-2);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.ib{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;padding:0}
+.ib svg{width:20px;height:20px;fill:currentColor}
+.ib.play{width:56px;height:56px;background:var(--accent);color:var(--on-accent);border-color:transparent}
+.ib.play svg{width:24px;height:24px}
+.chip{min-width:64px;font-variant-numeric:tabular-nums}
+
+@media (min-width:720px){
+  .pl-seek{grid-column:2;grid-row:1}
+}
+@media (min-width:960px){
+  body{padding-block:28px 130px}
+  .grid{grid-template-columns:minmax(0,1fr) 340px;align-items:start}
+  .panel{order:0;position:sticky;top:calc(16px + env(safe-area-inset-top,0px));max-height:calc(100vh - 150px);overflow:auto}
+  .panel>summary{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+@font-face{font-family:"Literata";src:url(fonts/literata-latin-400-normal.woff2) format("woff2");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Literata";src:url(fonts/literata-latin-400-italic.woff2) format("woff2");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Literata";src:url(fonts/literata-latin-600-normal.woff2) format("woff2");font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:"Literata";src:url(fonts/literata-latin-600-italic.woff2) format("woff2");font-weight:600;font-style:italic;font-display:swap}
+@font-face{font-family:"Albert Sans";src:url(fonts/albert-sans-latin-400-normal.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Albert Sans";src:url(fonts/albert-sans-latin-500-normal.woff2) format("woff2");font-weight:500;font-display:swap}
+@font-face{font-family:"Albert Sans";src:url(fonts/albert-sans-latin-600-normal.woff2) format("woff2");font-weight:600;font-display:swap}
+html{-webkit-text-size-adjust:100%}
+body{margin:0}
+[hidden]{display:none!important}
+.tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--skip)}
+.pill.ok{color:var(--ink)}
+.pill.ok i{background:var(--good)}
+.pill.warn i{background:var(--warn)}
+.installhelp{margin:0;padding:10px 14px;border-radius:10px;background:var(--surface);border:1px solid var(--line);font-size:.88rem}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:999px;padding:3px;margin-bottom:12px;background:var(--bg)}
+.seg label{position:relative;cursor:pointer}
+.seg input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.seg span{display:block;text-align:center;padding:7px 0;border-radius:999px;font-weight:500;font-size:.9rem}
+.seg input:checked+span{background:var(--accent);color:var(--on-accent)}
+.seg input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.engbox{display:flex;flex-direction:column;gap:10px}
+.natget{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:8px;background:var(--hl)}
+.natget p{margin:0;font-size:.88rem}
+.bar{height:6px;border-radius:3px;background:var(--surface);overflow:hidden}
+.bar span{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.voicegrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.vcard{position:relative;display:flex;flex-direction:column;gap:1px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;cursor:pointer;background:var(--bg);min-width:0}
+.vcard input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.vcard b{font-weight:600;font-size:.95rem}
+.vcard small{color:var(--ink-2);font-size:.76rem;line-height:1.3}
+.vcard:has(input:checked){border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--hl)}
+.vcard:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.voicegrid.locked .vcard{opacity:.55}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.ib.play.wait{opacity:.8}
+.pl-buf{display:block;height:3px;border-radius:2px;background:var(--surface-2);margin-top:4px;overflow:hidden}
+.pl-buf span{display:block;height:100%;width:0;background:var(--accent);opacity:.45}
+footer.credits{max-width:1180px;margin:8px auto 0;color:var(--ink-2);font-size:.78rem}
+footer.credits a{color:inherit}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <h1 class="mark">Quiet Reader</h1>
+    <div class="tools">
+      <span class="pill" id="offlinePill" title="Whether the app and voices are saved for offline use"><i></i><span id="offlineText">Checking offline</span></span>
+      <button id="installBtn" class="btn small" type="button" hidden>Install app</button>
+    </div>
+    <p class="privacy" style="flex-basis:100%">Everything runs on your device. Your files are never uploaded.</p>
+  </header>
+  <p class="installhelp" id="iosHelp" hidden>To install on iPhone or iPad: tap Share, then <b>Add to Home Screen</b>.</p>
+
+  <section id="drop" class="drop" aria-label="Open a document">
+    <div class="drop-copy"><strong>Drop a file here</strong><span>PDF, Word (.docx), EPUB, plain text, Markdown or HTML</span></div>
+    <button id="pick" class="btn primary" type="button">Choose file</button>
+    <input id="file" type="file" accept=".pdf,.docx,.epub,.txt,.md,.markdown,.html,.htm,application/pdf" hidden>
+  </section>
+  <p id="status" role="status" aria-live="polite"></p>
+
+  <div class="docbar">
+    <div><h1 id="docTitle">Sample chapter</h1><p id="docMeta"></p></div>
+    <span class="tag" id="sampleTag">Sample</span>
+  </div>
+  <div id="resume" class="resume" hidden>
+    <p id="resumeText"></p>
+    <button id="resumeYes" class="btn primary small" type="button">Resume</button>
+    <button id="resumeNo" class="btn small" type="button">Start over</button>
+  </div>
+
+  <div class="grid">
+    <main>
+      <nav class="secnav" aria-label="Sections">
+        <button id="secPrev" class="btn small" type="button">Previous</button>
+        <span id="secLabel"></span>
+        <button id="secNext" class="btn small" type="button">Next</button>
+      </nav>
+      <article id="reader" class="reader" aria-label="Document text"></article>
+      <nav class="secnav" aria-label="Next section">
+        <span></span>
+        <button id="secNext2" class="btn small" type="button">Next section</button>
+      </nav>
+    </main>
+
+    <details class="panel" id="panel" open>
+      <summary>Voice, skipping and contents</summary>
+      <div class="panel-in">
+        <section aria-labelledby="hVoice">
+          <h2 id="hVoice">Voice</h2>
+          <div class="seg" role="radiogroup" aria-label="Voice type">
+            <label><input type="radio" name="engine" value="natural" id="engNatural"><span>Natural</span></label>
+            <label><input type="radio" name="engine" value="device" id="engDevice"><span>Device</span></label>
+          </div>
+
+          <div id="natBox" class="engbox">
+            <div id="natGet" class="natget">
+              <p><b>Human-sounding voices that work offline.</b> A one-time download of about 90&nbsp;MB, saved on this device.</p>
+              <button id="natDownload" class="btn primary" type="button">Download natural voices</button>
+              <label class="row hint" id="gpuRow" for="useGpu" hidden><input type="checkbox" id="useGpu"> Faster GPU version (330&nbsp;MB)</label>
+              <div id="natBar" class="bar" hidden><span id="natBarFill"></span></div>
+              <p class="hint" id="natMsg"></p>
+            </div>
+            <div class="voicegrid" id="natVoices" role="radiogroup" aria-label="Natural voice"></div>
+            <p class="hint" id="natSpeed"></p>
+          </div>
+
+          <div id="devBox" class="engbox" hidden>
+            <div class="field">
+              <label for="voice">Device voice</label>
+              <select id="voice"></select>
+              <p class="hint" id="voiceHint">Built into your phone or computer. Some voices in Chrome and Edge need an internet connection.</p>
+            </div>
+            <label class="row hint" for="allLangs"><input type="checkbox" id="allLangs"> Show voices in every language</label>
+            <div class="field" id="pitchField"><label for="pitch">Pitch <output id="pitchOut"></output></label><input type="range" id="pitch" min="0.7" max="1.4" step="0.05"></div>
+          </div>
+
+          <div class="row" style="margin:12px 0 10px">
+            <button class="btn small" type="button" data-preset="soft">Soft</button>
+            <button class="btn small" type="button" data-preset="natural">Natural</button>
+            <button class="btn small" type="button" data-preset="brisk">Brisk</button>
+            <button class="btn small" type="button" id="hear">Hear voice</button>
+          </div>
+          <div class="field"><label for="rate">Speed <output id="rateOut"></output></label><input type="range" id="rate" min="0.6" max="1.8" step="0.05"></div>
+          <div class="field"><label for="vol">Volume <output id="volOut"></output></label><input type="range" id="vol" min="0.3" max="1" step="0.05"></div>
+          <div class="field">
+            <label for="sleep">Sleep timer <output id="sleepOut"></output></label>
+            <select id="sleep">
+              <option value="0">Off</option><option value="15">15 minutes</option><option value="30">30 minutes</option>
+              <option value="45">45 minutes</option><option value="60">60 minutes</option><option value="90">90 minutes</option>
+            </select>
+          </div>
+        </section>
+
+        <section aria-labelledby="hSkip">
+          <h2 id="hSkip">Skip while reading</h2>
+          <div id="filters"></div>
+          <label class="chk"><input type="checkbox" id="showSkipped"><span><b>Show skipped text</b><small>Displays what was left out, struck through, so you can check it.</small></span><span></span></label>
+        </section>
+
+        <section aria-labelledby="hToc">
+          <h2 id="hToc">Contents</h2>
+          <ol class="toc" id="toc"></ol>
+        </section>
+      </div>
+    </details>
+  </div>
+</div>
+
+<footer class="credits">Natural voices: <a href="https://huggingface.co/hexgrad/Kokoro-82M" target="_blank" rel="noopener">Kokoro-82M</a> (Apache 2.0). Document reading: pdf.js, Mammoth, JSZip. <a href="LICENSES.txt" target="_blank">Licenses</a></footer>
+
+<div class="player" role="group" aria-label="Playback">
+  <div class="pl-in">
+    <div class="pl-ctl">
+      <button class="ib" id="prev" type="button" aria-label="Previous sentence"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6zM20 6v12L9.5 12z"/></svg></button>
+      <button class="ib play" id="play" type="button" aria-label="Play">
+        <svg id="icPlay" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        <svg id="icPause" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+      </button>
+      <button class="ib" id="next" type="button" aria-label="Next sentence"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6h2v12h-2zM4 6l10.5 6L4 18z"/></svg></button>
+    </div>
+    <div class="pl-seek">
+      <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Position in document">
+      <span class="pl-buf" aria-hidden="true"><span id="bufFill"></span></span>
+      <p id="plLabel"></p>
+    </div>
+    <button class="btn chip pl-rate" id="rateChip" type="button" aria-label="Change speed"></button>
+  </div>
+</div>
+
+<script src="vendor/pdf.min.js"></script>
+<script src="vendor/mammoth.browser.min.js"></script>
+<script src="vendor/jszip.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
