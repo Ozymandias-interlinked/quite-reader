@@ -1,6 +1,6 @@
 // Quiet Reader service worker: keeps the app usable offline and turns on
 // cross-origin isolation (needed for multi-threaded voices) on hosts like GitHub Pages.
-const VERSION = 'qr-c20410f15b';
+const VERSION = 'qr-4f4b859bbb';
 const SHELL = ["./", "LICENSES.txt", "app.js", "fonts/albert-sans-latin-400-normal.woff2", "fonts/albert-sans-latin-500-normal.woff2", "fonts/albert-sans-latin-600-normal.woff2", "fonts/literata-latin-400-italic.woff2", "fonts/literata-latin-400-normal.woff2", "fonts/literata-latin-600-italic.woff2", "fonts/literata-latin-600-normal.woff2", "icons/apple-touch-icon.png", "icons/favicon.png", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "index.html", "manifest.webmanifest", "tts-worker.js", "vendor/jszip.min.js", "vendor/mammoth.browser.min.js", "vendor/ort-wasm-simd-threaded.jsep.mjs", "vendor/ort-wasm-simd-threaded.jsep.wasm", "vendor/pdf.min.js", "vendor/pdf.worker.min.js", "voices/af_bella.bin", "voices/af_heart.bin", "voices/af_nicole.bin", "voices/bf_emma.bin"];
 
 self.addEventListener('install', (e) => {
